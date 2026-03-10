@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Tourist Safety Monitoring</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --header-bg: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --accent: #4834d4;
+            --danger: #eb4d4b;
+            --success: #6ab04c;
+            --bg-light: #f0f2f5;
+            --text-main: #2d3436;
+        }
+
+        body { margin: 0; font-family: 'Inter', sans-serif; background-color: var(--bg-light); color: var(--text-main); min-height: 100vh; }
+
+        /* --- AUTH UI --- */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 32, 39, 0.98); display: flex; justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(10px); }
+        .auth-container { background: white; border-radius: 20px; width: 400px; padding: 40px; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .auth-tabs { display: flex; margin-bottom: 25px; border-bottom: 2px solid #eee; }
+        .auth-tab { flex: 1; padding: 10px; cursor: pointer; font-weight: 700; color: #888; }
+        .auth-tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); }
+        .auth-container input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .auth-container button.main-btn { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+
+        /* --- LAYOUT & NAV --- */
+        header { background: var(--header-bg); color: white; padding: 40px 20px; text-align: center; }
+        nav { background: white; padding: 10px; display: flex; justify-content: center; align-items: center; gap: 20px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        nav a { color: #555; text-decoration: none; font-weight: 600; cursor: pointer; padding: 8px 15px; border-radius: 5px; }
+        .user-profile-nav { display: flex; align-items: center; gap: 10px; border-left: 1px solid #eee; padding-left: 15px; }
+        .profile-icon { width: 30px; height: 30px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold; }
+
+        .page { display: none; padding: 40px 20px; max-width: 900px; margin: auto; }
+        .active-page { display: block; }
+        .content-card { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+
+        /* --- PROFILE UI --- */
+        .profile-header { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; }
+        .profile-avatar { width: 70px; height: 70px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.8rem; font-weight: bold; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .form-label { font-weight: 600; font-size: 0.9rem; color: #333; }
+        .profile-input { padding: 14px; border: 1px solid #e1e1e1; border-radius: 8px; background: #fdfdfd; font-size: 0.95rem; outline: none; box-sizing: border-box; }
+        .blood-grid { display: flex; gap: 10px; margin-top: 5px; flex-wrap: wrap; }
+        .blood-btn { min-width: 50px; padding: 10px; border: 1px solid #eee; background: white; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .blood-btn.selected { background: var(--accent); color: white; border-color: var(--accent); }
+        .section-title { font-weight: 700; margin-top: 25px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #1e3c72; }
+        .medical-row { display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+
+        /* --- REPORT UI --- */
+        .report-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; font-size: 1.5rem; font-weight: bold; }
+        .incident-grid { display: flex; gap: 10px; margin: 15px 0; }
+        .incident-btn { flex: 1; padding: 12px; border: 1px solid #eee; background: #f8f9fa; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .incident-btn.selected { background: #e0e0e0; border-color: #ccc; }
+        .black-btn { width: 100%; padding: 15px; background: black; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+
+        /* --- CHATBOT UI --- */
+        .chat-window { background: white; border-radius: 20px; overflow: hidden; border: 1px solid #eee; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        #chatBox { height: 400px; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; background: #fdfdfd; }
+        .msg { padding: 12px 18px; border-radius: 15px; max-width: 80%; font-size: 0.95rem; line-height: 1.4; }
+        .bot { background: #f0f2f5; align-self: flex-start; color: #333; }
+        .user { background: var(--accent); color: white; align-self: flex-end; }
+
+        .sos-btn { background: var(--danger); color: white; border: none; padding: 40px 80px; border-radius: 20px; font-size: 2.5rem; font-weight: 900; cursor: pointer; display: block; margin: auto; }
+        .radar { width: 80px; height: 80px; border: 4px solid var(--success); border-radius: 50%; margin: 20px auto; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(106, 176, 76, 0.4); } 70% { box-shadow: 0 0 0 20px rgba(106, 176, 76, 0); } }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <div id="loginOverlay">
+        <div class="auth-container">
+            <div class="auth-tabs">
+                <div id="tabLogin" class="auth-tab active" onclick="switchAuth('login')">Sign In</div>
+                <div id="tabSignup" class="auth-tab" onclick="switchAuth('signup')">Sign Up</div>
+            </div>
+            <div id="loginForm">
+                <input type="text" id="loginName" placeholder="Tourist Name">
+                <input type="password" id="loginPass" placeholder="Password">
+                <button class="main-btn" onclick="login()">Enter Portal</button>
+            </div>
+            <div id="signupForm" class="hidden">
+                <input type="text" id="signupUser" placeholder="Full Tourist Name">
+                <input type="email" id="signupEmail" placeholder="Email Address">
+                <input type="password" id="signupPass" placeholder="Create Password">
+                <button class="main-btn" onclick="signup()">Create Account</button>
+            </div>
+        </div>
+    </div>
+
+    <header id="mainHeader" class="hidden"><h1>Smart Tourist Safety</h1></header>
+
+    <nav id="mainNav" class="hidden">
+        <a onclick="showPage('home')">Home</a>
+        <a onclick="showPage('report')">Report</a>
+        <a onclick="showPage('gps')">GPS</a>
+        <a onclick="showPage('sos')">SOS</a>
+        <a onclick="showPage('ai')">Safety AI</a>
+        <a onclick="showPage('profile')">Profile</a>
+        <div class="user-profile-nav">
+            <div class="profile-icon" id="userInitial">U</div>
+            <span id="displayUser">Tourist Name</span>
+        </div>
+        <a onclick="location.reload()" style="color:var(--danger)">Logout</a>
+    </nav>
+
+    <main id="content" class="hidden">
+        
+        <section id="homePage" class="page active-page">
+            <div class="content-card">
+                <h2>Welcome, <span id="welcomeUser">Tourist</span></h2>
+                <p>Safety monitoring active. Use the Emergency Flash AI for quick 2-sentence protocols.</p>
+            </div>
+        </section>
+
+        <section id="reportPage" class="page">
+            <div class="content-card">
+                <div class="report-header"><span>‹</span> Incident Reporting</div>
+                <label class="form-label">Incident Type</label>
+                <div class="incident-grid">
+                    <button class="incident-btn" onclick="selectType(this)">Theft</button>
+                    <button class="incident-btn" onclick="selectType(this)">Accident</button>
+                    <button class="incident-btn" onclick="selectType(this)">Emergency</button>
+                </div>
+                <label class="form-label">Description</label>
+                <textarea class="profile-input" style="width:100%; margin-bottom:15px;" rows="3" placeholder="Briefly describe the incident"></textarea>
+                <button class="black-btn" onclick="alert('Upload Photo/Video Dialog')">Upload Photo/Video</button>
+                <button class="black-btn" onclick="alert('Incident Submitted Successfully!')" style="margin-top:20px;">Submit Incident</button>
+            </div>
+        </section>
+
+        <section id="profilePage" class="page">
+            <div class="content-card">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="avatarCircle">U</div>
+                    <div>
+                        <div id="profNameTitle" style="font-weight:700; font-size:1.4rem; color:#1e3c72;">Tourist Name</div>
+                        <div style="color:#777;">Emergency Contact Profile</div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Mobile No</label>
+                        <input type="text" class="profile-input" placeholder="Enter mobile number">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Alternate Mobile No</label>
+                        <input type="text" class="profile-input" placeholder="Enter alternate mobile number">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Email ID</label>
+                        <input type="text" id="profEmail" class="profile-input" readonly style="background:#f5f5f5;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Emergency Contact Name</label>
+                        <input type="text" class="profile-input" placeholder="Name of relative">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Blood Group</label>
+                    <div class="blood-grid">
+                        <button class="blood-btn" onclick="selectBlood(this)">A+</button>
+                        <button class="blood-btn" onclick="selectBlood(this)">A-</button>
+                        <button class="blood-btn selected" onclick="selectBlood(this)">B+</button>
+                        <button class="blood-btn" onclick="selectBlood(this)">B-</button>
+                        <button class="blood-btn" onclick="selectBlood(this)">O+</button>
+                        <button class="blood-btn" onclick="selectBlood(this)">AB+</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <textarea class="profile-input" rows="2" placeholder="Enter your full address"></textarea>
+                </div>
+
+                <div class="section-title">Medical Notes (Optional)</div>
+                <div class="medical-row"><div class="form-group" style="flex:1;"><label class="form-label">Allergy</label><input type="text" class="profile-input" placeholder="e.g. Peanuts, Penicillin"></div></div>
+                <div class="medical-row"><div class="form-group" style="flex:1;"><label class="form-label">Asthma / Diabetes</label><input type="text" class="profile-input" placeholder="Specify condition if any"></div></div>
+                <div class="medical-row"><div class="form-group" style="flex:1;"><label class="form-label">Any Special Condition</label><input type="text" class="profile-input" placeholder="N/A"></div></div>
+
+                <div class="form-row" style="margin-top:30px;">
+                    <button class="black-btn" style="background:#fff; color:#000; border:1px solid #ccc;" onclick="showPage('home')">Cancel</button>
+                    <button class="black-btn" onclick="alert('Profile Saved!')">Save Profile</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="aiPage" class="page">
+            <div class="chat-window">
+                <div style="padding:15px; background:var(--accent); color:white; font-weight:bold;">Emergency Flash AI</div>
+                <div id="chatBox"><div class="msg bot">What is the emergency? I provide 2-sentence quick guides.</div></div>
+                <div style="padding:15px; display:flex; gap:10px; border-top:1px solid #eee;">
+                    <input type="text" id="chatInput" placeholder="e.g. bleeding" style="flex:1; border:none; outline:none;" onkeypress="if(event.key === 'Enter') chat()">
+                    <button onclick="chat()" style="background:var(--accent); color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">SEND</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="gpsPage" class="page">
+            <div class="content-card" style="text-align:center;"><div class="radar"></div><div>Lat: 13.0827 | Lon: 80.2707</div></div>
+        </section>
+
+        <section id="sosPage" class="page">
+            <div class="content-card"><button class="sos-btn" onclick="alert('SOS Alert Dispatched to Authorities!')">SOS</button></div>
+        </section>
+    </main>
+
+    <script>
+        function switchAuth(mode) {
+            document.getElementById('loginForm').classList.toggle('hidden', mode === 'signup');
+            document.getElementById('signupForm').classList.toggle('hidden', mode === 'login');
+            document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
+            document.getElementById('tabSignup').classList.toggle('active', mode === 'signup');
+        }
+
+        function login() {
+            const name = document.getElementById('loginName').value || "Guest Tourist";
+            initiateSession(name, "tourist@safety.com");
+        }
+
+        function signup() {
+            const name = document.getElementById('signupUser').value || "New Tourist";
+            const email = document.getElementById('signupEmail').value || "tourist@safety.com";
+            initiateSession(name, email);
+        }
+
+        function initiateSession(name, email) {
+            document.getElementById('displayUser').innerText = name;
+            document.getElementById('welcomeUser').innerText = name;
+            document.getElementById('profNameTitle').innerText = name;
+            document.getElementById('profEmail').value = email;
+            document.getElementById('userInitial').innerText = name[0].toUpperCase();
+            document.getElementById('avatarCircle').innerText = name[0].toUpperCase();
+            
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('mainHeader').classList.remove('hidden');
+            document.getElementById('mainNav').classList.remove('hidden');
+            document.getElementById('content').classList.remove('hidden');
+        }
+
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            document.getElementById(id + 'Page').classList.add('active-page');
+        }
+
+        function selectType(btn) {
+            document.querySelectorAll('.incident-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function selectBlood(btn) {
+            document.querySelectorAll('.blood-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        async function chat() {
+            const input = document.getElementById('chatInput');
+            const box = document.getElementById('chatBox');
+            const query = input.value.toLowerCase().trim();
+            if(!query) return;
+
+            box.innerHTML += `<div class="msg user">${input.value}</div>`;
+            input.value = "";
+            box.scrollTop = box.scrollHeight;
+
+            setTimeout(() => {
+                let response = "Seeking safety protocols... For immediate help, use the **SOS** button or 'Report' an incident.";
+                if (query.includes("bleed")) response = "Apply firm, direct pressure with a clean cloth. Elevate the wound above heart level immediately.";
+                else if (query.includes("puncture")) response = "Do not remove the object. Apply pressure around it and use the SOS button immediately.";
+                else if (query.includes("lost")) response = "Stay in a well-lit area. Use the GPS tab to share your location with local authorities.";
+                else if (query.includes("hi")) response = "Hello! Please specify your emergency (e.g. 'bleeding') for a quick safety protocol.";
+                
+                box.innerHTML += `<div class="msg bot">${response}</div>`;
+                box.scrollTop = box.scrollHeight;
+            }, 600);
+        }
+    </script>
+</body>
+</html>
